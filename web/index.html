@@ -154,11 +154,30 @@ function draw() {
   }
   ctx.fillStyle = "#f87171";
   ctx.beginPath(); ctx.arc(g.apple[0] * CELL + CELL / 2, g.apple[1] * CELL + CELL / 2, CELL * .36, 0, 7); ctx.fill();
-  g.snake.forEach(([x, y], i) => {
-    ctx.fillStyle = i === 0 ? "#a7f3d0" : (i % 2 ? "#4ade80" : "#3ecf74");
-    if (!g.alive && i === 0) ctx.fillStyle = "#f87171";
-    ctx.beginPath(); ctx.roundRect(x * CELL + 2, y * CELL + 2, CELL - 4, CELL - 4, 6); ctx.fill();
-  });
+  const c = v => v * CELL + CELL / 2;   // centre d'une case
+  const last = g.snake.length - 1;
+  // corps (de la queue vers le cou) : carrés verts, la queue un peu plus petite
+  for (let i = last; i >= 1; i--) {
+    const [x, y] = g.snake[i], pad = i === last ? 5 : 2;
+    ctx.fillStyle = "#22c55e";
+    ctx.beginPath(); ctx.roundRect(x * CELL + pad, y * CELL + pad, CELL - 2 * pad, CELL - 2 * pad, 6); ctx.fill();
+  }
+  // trait le long du corps : relie chaque segment à ses voisins, montre le sens
+  ctx.strokeStyle = "#166534"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(c(g.snake[last][0]), c(g.snake[last][1]));
+  for (let i = last - 1; i >= 0; i--) ctx.lineTo(c(g.snake[i][0]), c(g.snake[i][1]));
+  ctx.stroke();
+  // tête : carré clair, bordure, deux yeux tournés vers la direction
+  const [hx, hy] = g.snake[0], [dx, dy] = DIRS[g.dir];
+  ctx.fillStyle = g.alive ? "#d9f99d" : "#f87171";
+  ctx.strokeStyle = g.alive ? "#65a30d" : "#991b1b"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(hx * CELL + 1, hy * CELL + 1, CELL - 2, CELL - 2, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#0f1115";
+  for (const s of [-1, 1]) {
+    const ex = c(hx) + dx * 6 + dy * s * 6, ey = c(hy) + dy * 6 + dx * s * 6;
+    ctx.beginPath(); ctx.arc(ex, ey, 3, 0, 7); ctx.fill();
+  }
 }
 
 function updateStats() {
