@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snake × jevos</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36; --text: #e6e8ee; --muted: #8a92a6;
+    --snake: #4ade80; --head: #a7f3d0; --apple: #f87171; --accent: #60a5fa; --warn: #fbbf24; --bad: #f87171;
+    --grid: #1b1f28;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+  h1 span { color: var(--accent); }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+  .pill.ok { color: var(--snake); border-color: #23573a; }
+  .pill.ko { color: var(--bad); border-color: #6b2b2b; }
+  main { display: grid; grid-template-columns: auto minmax(340px, 1fr); gap: 20px; padding: 20px; height: calc(100vh - 62px); }
+  .left { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.ai { background: #1e3a5f; border-color: #2f5f96; font-weight: 600; }
+  button.ai.on { background: var(--accent); color: #0b1220; border-color: var(--accent); }
+  label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .board { position: relative; }
+  canvas { display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--grid); }
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+             background: rgba(15,17,21,.72); border-radius: 8px; text-align: center; }
+  .overlay b { font-size: 22px; }
+  .overlay.hidden { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .stat small { color: var(--muted); display: block; font-size: 11px; }
+  .stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .right { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .right h2 { font-size: 13px; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .right h2 button { padding: 3px 10px; font-size: 12px; }
+  .live { padding: 12px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+  .bar { display: grid; grid-template-columns: 62px 1fr 48px; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+  .bar .track { height: 10px; background: var(--grid); border-radius: 5px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--muted); width: 0; transition: width .08s; }
+  .bar.best .fill { background: var(--accent); }
+  .bar.dead .name { color: var(--bad); }
+  .bar .v { text-align: right; color: var(--muted); }
+  #log { flex: 1; overflow-y: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 6px 0; }
+  .entry { padding: 2px 14px; border-left: 3px solid transparent; }
+  .entry summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry summary::-webkit-details-marker { display: none; }
+  .entry pre { white-space: pre-wrap; color: var(--muted); margin: 4px 0 6px; padding: 8px; background: var(--grid); border-radius: 6px; }
+  .entry .n { color: var(--muted); }
+  .entry .mv { color: var(--accent); font-weight: 700; }
+  .entry .p { color: var(--muted); }
+  .entry .ms { color: var(--warn); }
+  .entry.eat { border-left-color: var(--snake); }
+  .entry.death { border-left-color: var(--bad); }
+  .entry.sys { color: var(--muted); font-style: italic; }
+  .entry.over { color: var(--bad); font-weight: 600; padding: 6px 14px; }
+  .hint { color: var(--muted); font-size: 12px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } .right { height: 60vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Snake <span>×</span> jevos</h1>
+  <span id="health" class="pill">jevos : vérification…</span>
+  <span class="hint">Flèches / ZQSD pour jouer · Espace pour pause · J pour activer jevos</span>
+</header>
+<main>
+  <section class="left">
+    <div class="controls">
+      <button id="btnNew">Nouvelle partie</button>
+      <button id="btnAi" class="ai">▶ Jevos joue</button>
+      <label>Vitesse <input id="speed" type="range" min="0" max="400" step="10" value="120"> <span id="speedV">120 ms</span></label>
+      <label><input id="auto" type="checkbox" checked> Relancer après une mort</label>
+    </div>
+    <div class="board">
+      <canvas id="c" width="480" height="480"></canvas>
+      <div id="overlay" class="overlay"><b>Snake × jevos</b><span>Appuie sur une flèche pour jouer, ou sur « Jevos joue ».</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>Score</small><b id="sScore">0</b></div>
+      <div class="stat"><small>Meilleur</small><b id="sBest">0</b></div>
+      <div class="stat"><small>Parties jevos</small><b id="sGames">0</b></div>
+      <div class="stat"><small>Score moyen jevos</small><b id="sAvg">–</b></div>
+      <div class="stat"><small>Décisions</small><b id="sDec">0</b></div>
+      <div class="stat"><small>Latence moy.</small><b id="sLat">–</b></div>
+      <div class="stat"><small>Latence min / max</small><b id="sLatMM">–</b></div>
+      <div class="stat"><small>Choix mortels</small><b id="sDead">0</b></div>
+    </div>
+  </section>
+  <section class="right">
+    <h2>Décisions de jevos en direct <button id="btnClear">Effacer</button></h2>
+    <div class="live" id="live"></div>
+    <div id="log"></div>
+  </section>
+</main>
+<script>
+const N = 16, CELL = 30;
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const ARROW = { up: "↑", down: "↓", left: "←", right: "→" };
+const OPP = { up: "down", down: "up", left: "right", right: "left" };
+const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+               z: "up", w: "up", s: "down", q: "left", a: "left", d: "right" };
+const $ = id => document.getElementById(id);
+const ctx = $("c").getContext("2d");
+
+let g;                // état de la partie
+let ai = false;       // jevos aux commandes ?
+let loopId = 0;       // invalide les anciennes boucles
+let paused = false;
+const st = { best: 0, games: 0, total: 0, dec: 0, latSum: 0, latMin: Infinity, latMax: 0, dead: 0 };
+
+function newGame() {
+  const m = N >> 1;
+  g = { snake: [[m, m], [m - 1, m], [m - 2, m]], dir: "right", next: "right", score: 0, alive: true, started: false, step: 0 };
+  placeApple();
+  $("overlay").classList.add("hidden");
+  draw(); updateStats();
+}
+
+function placeApple() {
+  const occ = new Set(g.snake.map(p => p.join()));
+  const free = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!occ.has(x + "," + y)) free.push([x, y]);
+  g.apple = free[Math.floor(Math.random() * free.length)];
+}
+
+// Avance d'une case. Renvoie "eat", "dead" ou "move".
+function step(dir) {
+  if (dir !== OPP[g.dir] || g.snake.length === 1) g.dir = dir;
+  const [hx, hy] = g.snake[0], [dx, dy] = DIRS[g.dir];
+  const nh = [hx + dx, hy + dy];
+  const eats = nh[0] === g.apple[0] && nh[1] === g.apple[1];
+  const body = eats ? g.snake : g.snake.slice(0, -1);
+  if (nh[0] < 0 || nh[1] < 0 || nh[0] >= N || nh[1] >= N || body.some(p => p[0] === nh[0] && p[1] === nh[1])) {
+    g.alive = false; return "dead";
+  }
+  g.snake = [nh, ...body];
+  g.step++;
+  if (eats) { g.score++; if (g.snake.length === N * N) { g.alive = false; return "win"; } placeApple(); return "eat"; }
+  return "move";
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 480, 480);
+  ctx.strokeStyle = "#20252f"; ctx.lineWidth = 1;
+  for (let i = 1; i < N; i++) {
+    ctx.beginPath(); ctx.moveTo(i * CELL + .5, 0); ctx.lineTo(i * CELL + .5, 480); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * CELL + .5); ctx.lineTo(480, i * CELL + .5); ctx.stroke();
+  }
+  ctx.fillStyle = "#f87171";
+  ctx.beginPath(); ctx.arc(g.apple[0] * CELL + CELL / 2, g.apple[1] * CELL + CELL / 2, CELL * .36, 0, 7); ctx.fill();
+  g.snake.forEach(([x, y], i) => {
+    ctx.fillStyle = i === 0 ? "#a7f3d0" : (i % 2 ? "#4ade80" : "#3ecf74");
+    if (!g.alive && i === 0) ctx.fillStyle = "#f87171";
+    ctx.beginPath(); ctx.roundRect(x * CELL + 2, y * CELL + 2, CELL - 4, CELL - 4, 6); ctx.fill();
+  });
+}
+
+function updateStats() {
+  $("sScore").textContent = g.score;
+  $("sBest").textContent = st.best;
+  $("sGames").textContent = st.games;
+  $("sAvg").textContent = st.games ? (st.total / st.games).toFixed(1) : "–";
+  $("sDec").textContent = st.dec;
+  $("sLat").textContent = st.dec ? Math.round(st.latSum / st.dec) + " ms" : "–";
+  $("sLatMM").textContent = st.dec ? Math.round(st.latMin) + " / " + Math.round(st.latMax) : "–";
+  $("sDead").textContent = st.dead;
+}
+
+function gameOver(byAi, how) {
+  st.best = Math.max(st.best, g.score);
+  if (byAi) { st.games++; st.total += g.score; }
+  draw(); updateStats();
+  log(`<div class="entry over">${how === "win" ? "🏆 Victoire" : "✖ Mort"} — score ${g.score} en ${g.step} coups${byAi ? "" : " (manuel)"}</div>`);
+  $("overlay").innerHTML = `<b>${how === "win" ? "Grille remplie !" : "Perdu"}</b><span>Score : ${g.score}</span>`;
+  $("overlay").classList.remove("hidden");
+  if (byAi && $("auto").checked) setTimeout(() => { if (ai) { newGame(); runAi(); } }, 900);
+  else if (byAi) setAi(false);
+}
+
+// ---------- mode manuel ----------
+function runManual() {
+  const id = ++loopId;
+  const tick = () => {
+    if (id !== loopId || ai || !g.alive) return;
+    if (!paused) {
+      const r = step(g.next);
+      draw(); updateStats();
+      if (r === "dead" || r === "win") return gameOver(false, r);
+    }
+    setTimeout(tick, Math.max(60, +$("speed").value));
+  };
+  tick();
+}
+
+// ---------- mode jevos ----------
+async function runAi() {
+  const id = ++loopId;
+  while (id === loopId && ai && g.alive) {
+    if (paused) { await sleep(100); continue; }
+    const t0 = performance.now();
+    let d;
+    try {
+      const r = await fetch("/api/decide", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ width: N, height: N, snake: g.snake, apple: g.apple, direction: g.dir }) });
+      d = await r.json();
+      if (!r.ok) throw new Error(d.error || r.status);
+    } catch (e) {
+      log(`<div class="entry sys">Erreur : ${esc(e.message)}</div>`);
+      setAi(false); return;
+    }
+    if (id !== loopId || !ai) return;
+    st.dec++; st.latSum += d.latency_ms; st.latMin = Math.min(st.latMin, d.latency_ms); st.latMax = Math.max(st.latMax, d.latency_ms);
+    if (d.deadly) st.dead++;
+    const res = step(d.move);
+    draw(); updateStats(); showLive(d); logDecision(d, res);
+    if (res === "dead" || res === "win") return gameOver(true, res);
+    const wait = +$("speed").value - (performance.now() - t0);
+    if (wait > 0) await sleep(wait);
+  }
+}
+
+function setAi(on) {
+  ai = on;
+  $("btnAi").classList.toggle("on", on);
+  $("btnAi").textContent = on ? "■ Arrêter jevos" : "▶ Jevos joue";
+  paused = false;
+  if (on) {
+    if (!g.alive) newGame();
+    $("overlay").classList.add("hidden");
+    log(`<div class="entry sys">— jevos prend les commandes —</div>`);
+    runAi();
+  } else {
+    loopId++;
+    g.next = g.dir;
+    if (g.alive && g.started) { log(`<div class="entry sys">— jevos rend la main —</div>`); runManual(); }
+  }
+}
+
+// ---------- logs ----------
+function showLive(d) {
+  const best = d.move;
+  $("live").innerHTML = Object.keys(DIRS).map(k => {
+    const p = d.probs[k], dead = d.facts[k].deadly;
+    return `<div class="bar ${k === best ? "best" : ""} ${dead ? "dead" : ""}"><span class="name">${ARROW[k]} ${k}${dead ? " ☠" : ""}</span>
+      <div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%"></div></div>
+      <span class="v" title="sûr ${d.safe[k].toFixed(2)} · pomme ${d.apple[k].toFixed(2)}">${p.toFixed(2)}</span></div>`;
+  }).join("") + `<div class="hint">score = P(sûr)² × (0,4 + 0,6 × P(pomme)) · 8 questions oui/non en 1 requête</div>`;
+}
+
+function logDecision(d, res) {
+  const probs = Object.keys(DIRS).map(k => `${ARROW[k]}${d.probs[k].toFixed(2)}`).join(" ");
+  const tag = res === "eat" ? " 🍎" : res === "dead" ? " ☠" : "";
+  log(`<details class="entry ${res === "eat" ? "eat" : ""} ${res === "dead" ? "death" : ""}"><summary>` +
+      `<span class="n">#${String(st.dec).padStart(4, "0")}</span> <span class="mv">${ARROW[d.move]} ${d.move.padEnd(5)}</span> ` +
+      `<span class="p">${probs}</span> <span class="ms">${Math.round(d.latency_ms)} ms</span>${tag}</summary>` +
+      `<pre>${esc(d.state)}\n\nRéponses de jevos :\n` +
+      Object.keys(DIRS).map(k => `  ${k.padEnd(5)}  sûr ${d.safe[k].toFixed(2)}  pomme ${d.apple[k].toFixed(2)}  → score ${d.probs[k].toFixed(3)}`).join("\n") +
+      `</pre></details>`);
+}
+
+const logEl = $("log");
+function log(html) {
+  const stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+  logEl.insertAdjacentHTML("beforeend", html);
+  while (logEl.children.length > 400) logEl.firstElementChild.remove();
+  if (stick) logEl.scrollTop = logEl.scrollHeight;
+}
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- contrôles ----------
+document.addEventListener("keydown", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (k === " ") { paused = !paused; e.preventDefault(); return; }
+  if (k === "j") { setAi(!ai); return; }
+  const dir = KEYS[k];
+  if (!dir) return;
+  e.preventDefault();
+  if (ai) setAi(false);          // reprise en main
+  if (!g.alive) newGame();
+  if (dir !== OPP[g.dir]) g.next = dir;
+  if (!g.started) { g.started = true; $("overlay").classList.add("hidden"); runManual(); }
+});
+$("btnNew").onclick = () => { loopId++; const wasAi = ai; newGame(); if (wasAi) runAi(); };
+$("btnAi").onclick = () => { g.started = true; setAi(!ai); };
+$("btnClear").onclick = () => { logEl.innerHTML = ""; };
+$("speed").oninput = () => { $("speedV").textContent = $("speed").value + " ms"; };
+
+async function health() {
+  try {
+    const h = await (await fetch("/api/health")).json();
+    $("health").className = "pill " + (h.ok ? "ok" : "ko");
+    $("health").textContent = h.ok ? `jevos : prêt (${h.model})` : "jevos : hors ligne";
+  } catch { $("health").className = "pill ko"; $("health").textContent = "serveur : hors ligne"; }
+}
+health(); setInterval(health, 5000);
+newGame();
+$("overlay").classList.remove("hidden");
+</script>
+</body>
+</html>

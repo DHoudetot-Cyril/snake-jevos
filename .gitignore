@@ -1,0 +1,6 @@
+# jevos (binaire + modèle ~700 Mo) : téléchargé par setup.sh
+jevos/
+downloads/
+jevos.log
+__pycache__/
+*.pyc
