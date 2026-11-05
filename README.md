@@ -4,7 +4,7 @@ Un Snake dans le navigateur, jouable à la main ou piloté par **jevos**
 ([feder-cr/jev](https://github.com/feder-cr/jev)), un modèle de décision open source (MIT)
 qui répond à des questions oui/non en quelques dizaines de millisecondes, sur le processeur.
 
-![jevos aux commandes : le plateau, les probabilités des 4 directions et le journal des décisions en direct](docs/screenshot.png)
+![jevos aux commandes : le plateau, les probabilités des 4 directions et le journal des décisions en direct](docs/screenshot-v2.png)
 
 ## Installer et lancer
 
