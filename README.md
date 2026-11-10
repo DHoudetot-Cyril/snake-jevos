@@ -40,6 +40,15 @@ Puis ouvrir http://127.0.0.1:8080
 
 ## 🧠 Fonctionnement (mode « assisté »)
 
+```mermaid
+flowchart LR
+    G["🎮 Jeu dans le navigateur<br/>web/index.html"] -->|"POST /api/decide<br/>état de la grille"| S["🐍 server.py<br/>Python, bibliothèque standard"]
+    S --> F["🔎 Analyse de chaque direction<br/>mortelle · pomme · piège"]
+    F -->|"8 questions oui/non<br/>en 1 requête"| J["🧠 jevos-v5<br/>modèle de décision sur CPU"]
+    J -->|"P(sûr) et P(pomme)<br/>par direction"| SC["🧮 score = P(sûr)² × (0,4 + 0,6 × P(pomme))"]
+    SC -->|"meilleure direction<br/>~48 ms par coup"| G
+```
+
 À chaque pas, `server.py` :
 
 1. analyse la grille et décrit chaque direction en texte : mortelle (mur / corps), mange la pomme,
