@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import itertools
 import tempfile
 import time
 from pathlib import Path
@@ -70,7 +71,7 @@ def assemble(folder: Path, stamps: list[float], out: Path, width: int, fps: floa
         canvas.paste(im, (0, 0))
         ImageDraw.Draw(canvas).text((12, im.height + 6), CAPTION, font=font, fill=(140, 140, 150))
         frames.append(canvas)
-    durations = [round((stamps[b] - stamps[a]) * 1000) for a, b in zip(picks, picks[1:])] + [2500]
+    durations = [round((stamps[b] - stamps[a]) * 1000) for a, b in itertools.pairwise(picks)] + [2500]
 
     # Palette commune ; les couleurs rares mais importantes (la pomme) reçoivent une pastille.
     sample = Image.new("RGB", (frames[0].width, frames[0].height * 3 + 120), (0, 0, 0))
