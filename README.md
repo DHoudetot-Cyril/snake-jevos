@@ -19,7 +19,10 @@ Le jeu peut être piloté par **jevos**
 ([feder-cr/jev](https://github.com/feder-cr/jev)), un modèle de décision open source (MIT)
 qui répond à des questions oui/non en quelques dizaines de millisecondes, sur le processeur.
 
-![jevos aux commandes : le plateau, les probabilités des 4 directions et le journal des décisions en direct](docs/screenshot-v2.png)
+<p align="center"><img src="docs/demo.gif" alt="jevos aux commandes : le plateau, les probabilités des 4 directions et le journal des décisions en direct" width="860"></p>
+<p align="center"><sub>Une vraie partie filmée en temps réel (navigateur sans interface, captures sans perte) :
+jevos décide seul à chaque coup, en ~50 ms sur le processeur. Régénérer : <code>uv run tools/record_demo.py</code>
+(jeu lancé avec <code>./start.sh</code>). <a href="docs/screenshot-v2.png">Capture fixe</a>.</sub></p>
 
 ## 🚀 Installer et lancer
 
@@ -80,6 +83,7 @@ python3 tools/simulate.py 5      # rejoue 5 parties sans navigateur
 - `start.sh` : lance jevos puis le jeu
 - `web/index.html` : le jeu
 - `server.py` : serveur web + lien avec jevos (bibliothèque standard Python uniquement)
+- `tools/record_demo.py` : filme une partie et produit `docs/demo.gif` (outil de développement, Playwright + Pillow)
 
 ## 👤 Auteur
 
